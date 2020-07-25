@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang='en'>
+
+<head>
+  <meta charset='utf-8'>
+  <meta name='description' content='Simple Text Encryption'>
+  <meta name='keywords' content='HTML, CSS, Golang, JavaScript, jQuery, Bootstrap, Gin, JSON'>
+  <meta name='author' content='Sunshine'>
+  <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+  <title>Simple Text Encryption</title>
+  <script src='https://cdn.jsdelivr.net/npm/jquery@3/dist/jquery.min.js'></script>
+  <script src='https://cdn.jsdelivr.net/npm/sjcl@1/sjcl.min.js'></script>
+  <!--            https://github.com/bitwiseshiftleft/sjcl            -->
+  <script src='https://cdn.jsdelivr.net/npm/pako@1/dist/pako.min.js'></script>
+  <!--                   https://github.com/nodeca/pako                    -->
+  <script src='https://cdn.jsdelivr.net/npm/sweetalert2@9/dist/sweetalert2.all.min.js'></script>
+  <!--                      https://github.com/sweetalert2/sweetalert2                       -->
+  <script src='/static/script.js'></script>
+  <link href='https://cdn.jsdelivr.net/npm/bootstrap@4/dist/css/bootstrap.min.css' rel='stylesheet'>
+  <link rel='stylesheet' href='/static/style.css'>
+
+  <script>
+    $(function () {
+      $('#online').change(() => {
+        if ($('#online').prop('checked')) {
+          Swal.fire({
+            title: 'Warning!',
+            text: 'It is recommended using online version only when offline version is not working.',
+            icon: 'warning',
+            confirmButtonText: 'Continue',
+            showCancelButton: true,
+            focusCancel: true,
+            customClass: {
+              confirmButton: 'swal btn btn-primary',
+              cancelButton: 'swal btn btn-danger'
+            },
+            buttonsStyling: false
+          }).then(confirm => {
+            if (!confirm.value) {
+              $('#online').prop('checked', false);
+            };
+          });
+        };
+      });
+      $('#show').change(() => {
+        if ($('#key').attr('type') == 'password') {
+          $('#key').attr('type', 'text');
+        } else {
+          $('#key').attr('type', 'password');
+        };
+      });
+    });
+  </script>
+</head>
+
+<body>
+  <header class='navbar navbar-expand navbar-light flex-column flex-md-row'>
+    <a class='navbar-brand text-primary m-0 mr-md-3' href='/'>Simple Text Encryption</a>
+    <div class='custom-control custom-switch'>
+      <input type='checkbox' class='custom-control-input' id='online'>
+      <label class='custom-control-label' for='online'>Online Version</label>
+    </div>
+  </header>
+  <div class='container-fluid'>
+    <div class='row'>
+      <div class='unencrypted'>
+        <textarea class='form-control' id='unencrypted'
+          placeholder='Type (or paste) unencrypted text here...'></textarea>
+      </div>
+      <div class='btnbar'>
+        <div class='button-group'>
+          <div class='input-group'>
+            <div class='input-group-prepend'>
+              <span class='input-group-text'>Key</span>
+            </div>
+            <input type='password' class='form-control' maxlength=1000 id='key'>
+          </div>
+          <div class='custom-control custom-checkbox mb-3'>
+            <input type='checkbox' class='custom-control-input' id='show'>
+            <label class='custom-control-label' for='show'>Show/Hide Key</label>
+          </div>
+        </div>
+        <div class='button-group main'>
+          <button onclick='doEncrypt()' class='btn btn-danger btn-block' type='button' id='encrypt'>
+            <span class='horizontal'>
+              <svg width='1em' height='1em' fill='currentColor'>
+                <path
+                  d='M12.14 8.753l-5.482 4.796c-.646.566-1.658.106-1.658-.753V3.204a1 1 0 011.659-.753l5.48 4.796a1 1 0 010 1.506z' />
+              </svg>
+              Encrypt
+              <svg width='1em' height='1em' fill='currentColor'>
+                <path
+                  d='M12.14 8.753l-5.482 4.796c-.646.566-1.658.106-1.658-.753V3.204a1 1 0 011.659-.753l5.48 4.796a1 1 0 010 1.506z' />
+              </svg>
+            </span>
+            <span class='vertical'>
+              <svg width='1em' height='1em' fill='currentColor'>
+                <path
+                  d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 01.753 1.659l-4.796 5.48a1 1 0 01-1.506 0z' />
+              </svg>
+              Encrypt
+              <svg width='1em' height='1em' fill='currentColor'>
+                <path
+                  d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 01.753 1.659l-4.796 5.48a1 1 0 01-1.506 0z' />
+              </svg>
+            </span>
+          </button>
+          <button onclick='doDecrypt()' class='btn btn-success btn-block' type='button' id='decrypt'>
+            <span class='horizontal'>
+              <svg width='1em' height='1em' fill='currentColor'>
+                <path
+                  d='M3.86 8.753l5.482 4.796c.646.566 1.658.106 1.658-.753V3.204a1 1 0 00-1.659-.753l-5.48 4.796a1 1 0 000 1.506z' />
+              </svg>
+              Decrypt
+              <svg width='1em' height='1em' fill='currentColor'>
+                <path
+                  d='M3.86 8.753l5.482 4.796c.646.566 1.658.106 1.658-.753V3.204a1 1 0 00-1.659-.753l-5.48 4.796a1 1 0 000 1.506z' />
+              </svg>
+            </span>
+            <span class='vertical'>
+              <svg width='1em' height='1em' fill='currentColor'>
+                <path
+                  d='M7.247 4.86l-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 00.753-1.659l-4.796-5.48a1 1 0 00-1.506 0z' />
+              </svg>
+              Decrypt
+              <svg width='1em' height='1em' fill='currentColor'>
+                <path
+                  d='M7.247 4.86l-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 00.753-1.659l-4.796-5.48a1 1 0 00-1.506 0z' />
+              </svg>
+            </span>
+          </button>
+        </div>
+        <div class='button-group copy'>
+          <br>
+          <button onclick='Copy()' type='button' class='btn btn-primary btn-block' id='copy'>Copy to clipboard</button>
+          <div class='d-flex justify-content-around'>
+            <div class='custom-control custom-radio custom-control-inline'>
+              <input class='custom-control-input' type='radio' id='text1' name='text' value='unencrypted'>
+              <label class='custom-control-label' for='text1'>Unencrypted</label>
+            </div>
+            <div class='custom-control custom-radio custom-control-inline'>
+              <input class='custom-control-input' type='radio' id='text2' name='text' value='encrypted' checked>
+              <label class='custom-control-label' for='text2'>Encrypted</label>
+            </div>
+          </div>
+          <br>
+        </div>
+        <div class='button-group'>
+          <button onclick='Clear()' type='button' class='btn btn-primary btn-block'>Clear</button>
+        </div>
+      </div>
+      <div class='encrypted'>
+        <textarea class='form-control' id='encrypted' placeholder='Paste encrypted text here...'></textarea>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>
