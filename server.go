@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/gin-gonic/gin"
@@ -38,7 +39,7 @@ func run() {
 		case "encrypt":
 			c.JSON(200, gin.H{"result": ste.Encrypt(key, content)})
 		case "decrypt":
-			result, err := ste.Decrypt(key, content)
+			result, err := ste.Decrypt(key, strings.TrimSpace(content))
 			if err != nil {
 				c.JSON(200, gin.H{"result": nil})
 			} else {
