@@ -1,10 +1,10 @@
 [Unit]
-Description=uWSGI instance to serve Simple Text Encryption
+Description=Instance to serve Simple Text Encryption
 After=network.target
 
 [Service]
 Environment=GIN_MODE=release
-ExecStart=/var/www/ste-go/ste-go run
+ExecStart=/var/www/cipher/webapp/ste
 
 [Install]
 WantedBy=multi-user.target

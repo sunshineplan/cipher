@@ -5,16 +5,17 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 
-	"github.com/sunshineplan/utils/ste"
+	"github.com/sunshineplan/cipher"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
 func menu() (choice string) {
 	fmt.Print(`   * * * * * * * * * * * * * * * * * * * * * *
    *                                         *
-   *  Welcome to use Simple Text Encryption  *
+   *     Welcome to use Cipher               *
    *                                         *
    *     1. Encrypt                          *
    *     2. Decrypt                          *
@@ -39,7 +40,7 @@ func clear() {
 		cmd.Stdout = os.Stdout
 		cmd.Run()
 	}
-	c[OS]()
+	c[runtime.GOOS]()
 }
 
 func multilineInput() string {
@@ -55,7 +56,7 @@ func multilineInput() string {
 	return strings.Join(lines, "\n")
 }
 
-func client() {
+func main() {
 	var content string
 	var key []byte
 	for {
@@ -67,7 +68,7 @@ func client() {
 			fmt.Print("\nKey: ")
 			key, _ = terminal.ReadPassword(int(os.Stdin.Fd()))
 			fmt.Println("\nEncrypted Content:")
-			fmt.Println(ste.Encrypt(string(key), content))
+			fmt.Println(cipher.Encrypt(string(key), content))
 			fmt.Println("\nPress enter to continue...")
 			terminal.ReadPassword(int(os.Stdin.Fd()))
 		case "2":
@@ -75,7 +76,7 @@ func client() {
 			fmt.Scanln(&content)
 			fmt.Print("\nKey: ")
 			key, _ = terminal.ReadPassword(int(os.Stdin.Fd()))
-			ct, err := ste.Decrypt(string(key), content)
+			ct, err := cipher.Decrypt(string(key), content)
 			if err != nil {
 				fmt.Println("\nEmpty or Malformed content!")
 			} else {

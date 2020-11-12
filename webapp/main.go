@@ -6,17 +6,14 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
-	"strings"
 
+	"github.com/sunshineplan/utils/httpsvr"
 	"github.com/vharitonsky/iniflags"
 )
 
-// OS is the running program's operating system
-const OS = runtime.GOOS
-
 var self string
-var unix, host, port, logPath *string
+var logPath string
+var server httpsvr.Server
 
 func init() {
 	var err error
@@ -37,27 +34,14 @@ func usage() {
 
 func main() {
 	flag.Usage = usage
-	unix = flag.String("unix", "", "UNIX-domain Socket")
-	host = flag.String("host", "127.0.0.1", "Server Host")
-	port = flag.String("port", "12345", "Server Port")
-	logPath = flag.String("log", "", "Log Path")
+	flag.StringVar(&server.Unix, "unix", "", "UNIX-domain Socket")
+	flag.StringVar(&server.Host, "host", "0.0.0.0", "Server Host")
+	flag.StringVar(&server.Port, "port", "12345", "Server Port")
+	//flag.StringVar(&logPath, "log", "/var/log/app/sda-go.log", "Log Path")
+	flag.StringVar(&logPath, "log", "", "Log Path")
 	iniflags.SetConfigFile(filepath.Join(filepath.Dir(self), "config.ini"))
 	iniflags.SetAllowMissingConfigFile(true)
 	iniflags.Parse()
 
-	switch flag.NArg() {
-	case 0:
-		client()
-	case 1:
-		switch flag.Arg(0) {
-		case "run":
-			run()
-		case "client":
-			client()
-		default:
-			log.Fatalf("Unknown argument: %s", flag.Arg(0))
-		}
-	default:
-		log.Fatalf("Unknown arguments: %s", strings.Join(flag.Args(), " "))
-	}
+	run()
 }
