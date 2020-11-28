@@ -23,8 +23,9 @@ jobs:
 
     - name: Install dependencies
       run: |
-        go mod download
+        go get github.com/pschlump/AesCCM
+        go get golang.org/x/crypto/pbkdf2
+
     - name: Run Unit tests
       run: |
-        go build -v ./...
         go test -v -race ./...

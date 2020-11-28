@@ -21,10 +21,13 @@ jobs:
 
     - name: Install dependencies
       run: |
-        go mod download
+        go get github.com/pschlump/AesCCM
+        go get golang.org/x/crypto/pbkdf2
+
     - name: Run Unit tests
       run: |
         go test -race -covermode atomic -coverprofile=covprofile ./...
+
     - name: Install goveralls
       run: go get github.com/mattn/goveralls
 
