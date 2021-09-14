@@ -2,45 +2,27 @@ name: Coverage
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
 
 jobs:
-  test:
+  coverage:
     name: Test with Coverage
     runs-on: ubuntu-latest
     steps:
-    - name: Set up Go
-      uses: actions/setup-go@v2
-      with:
-        go-version: '1.x'
+      - name: Checkout Code
+        uses: actions/checkout@v2
 
-    - name: Set up GOPATH
-      run: |
-        echo "GOPATH=${{ github.workspace }}" >> "$GITHUB_ENV"
-        echo "${{ github.workspace }}/bin" >> "$GITHUB_PATH"
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.x'
 
-    - name: Check out code
-      uses: actions/checkout@v2
-      with:
-        path: src/github.com/sunshineplan/cipher
-
-    - name: Install dependencies
-      run: |
-        go get github.com/pschlump/AesCCM
-        go get golang.org/x/crypto/pbkdf2
-
-    - name: Run Unit tests
-      run: |
-        go test -race -covermode atomic -coverprofile=covprofile ./...
-      working-directory: src/github.com/sunshineplan/cipher
-
-    - name: Install goveralls
-      run: go get github.com/mattn/goveralls
-
-    - name: Send coverage
-      env:
-        COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: goveralls -coverprofile=covprofile -service=github
-      working-directory: src/github.com/sunshineplan/cipher
+      - name: Send Coverage
+        env:
+          COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          go test -race -covermode atomic -coverprofile=covprofile ./...
+          go get github.com/mattn/goveralls
+          goveralls -coverprofile=covprofile -service=github
