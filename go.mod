@@ -1,4 +1,4 @@
-module cipher
+module github.com/sunshineplan/cipher
 
 go 1.16
 
