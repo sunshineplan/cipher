@@ -7,32 +7,33 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
-	"io/ioutil"
+	"errors"
+	"io"
+	"os"
+	"path/filepath"
 	"strings"
 
 	aesccm "github.com/pschlump/AesCCM"
 	"golang.org/x/crypto/pbkdf2"
 )
 
-// Encrypt encrypts text by key.
-func Encrypt(key, plaintext string) string {
+const ext = ".enc"
+
+// EncryptText encrypts text by key.
+func EncryptText(key, plaintext string) string {
 	if key == "" {
-		return strings.ReplaceAll(base64.StdEncoding.EncodeToString([]byte(plaintext)), "=", "")
+		return strings.ReplaceAll(
+			base64.StdEncoding.EncodeToString([]byte(plaintext)), "=", "",
+		)
 	}
-	salt := make([]byte, 8)
-	rand.Read(salt)
-	dk := pbkdf2.Key([]byte(key), salt, 10000, 16, sha256.New)
-	Aes, _ := aes.NewCipher(dk)
-	AesCCM, _ := aesccm.NewCCM(Aes, 8, 13)
-	nonce := make([]byte, 16)
-	rand.Read(nonce)
-	data, compression := compress(plaintext)
-	ciphertext := AesCCM.Seal(nil, nonce, data, nil)
-	return strings.ReplaceAll(base64.StdEncoding.EncodeToString(concat(salt, nonce, ciphertext, compression)), "=", "")
+
+	return strings.ReplaceAll(
+		base64.StdEncoding.EncodeToString(Encrypt([]byte(key), []byte(plaintext))), "=", "",
+	)
 }
 
-// Decrypt decrypts text by key.
-func Decrypt(key, ciphertext string) (string, error) {
+// DecryptText decrypts text by key.
+func DecryptText(key, ciphertext string) (string, error) {
 	if r := len(ciphertext) % 4; r > 0 {
 		ciphertext += strings.Repeat("=", 4-r)
 	}
@@ -43,21 +44,100 @@ func Decrypt(key, ciphertext string) (string, error) {
 	if key == "" {
 		return string(data), nil
 	}
+
+	plaintext, err := Decrypt([]byte(key), data)
+	if err != nil {
+		return "", err
+	}
+
+	return string(plaintext), nil
+}
+
+// EncryptFile encrypts file by key.
+func EncryptFile(key, file string) error {
+	if key == "" {
+		return errors.New("blank key")
+	}
+
+	data, err := os.ReadFile(file)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(file+ext, Encrypt([]byte(key), data), 0666)
+}
+
+// DecryptFile decrypts file by key.
+func DecryptFile(key, file string) (string, error) {
+	if key == "" {
+		return "", errors.New("blank key")
+	}
+
+	data, err := os.ReadFile(file)
+	if err != nil {
+		return "", err
+	}
+
+	data, err = Decrypt([]byte(key), data)
+	if err != nil {
+		return "", err
+	}
+
+	if filepath.Ext(file) == ext {
+		file = file[:len(file)-len(ext)]
+	} else {
+		file = file + ".dec"
+	}
+
+	err = os.WriteFile(file, data, 0666)
+	if err != nil {
+		return "", err
+	}
+
+	return file, nil
+}
+
+// Encrypt encrypts bytes by key.
+func Encrypt(key, data []byte) []byte {
+	if len(key) == 0 {
+		return data
+	}
+
+	salt := make([]byte, 8)
+	rand.Read(salt)
+	dk := pbkdf2.Key(key, salt, 10000, 16, sha256.New)
+	Aes, _ := aes.NewCipher(dk)
+	AesCCM, _ := aesccm.NewCCM(Aes, 8, 13)
+	nonce := make([]byte, 16)
+	rand.Read(nonce)
+	data, compression := compress(data)
+	encrypted := AesCCM.Seal(nil, nonce, data, nil)
+
+	return concat(salt, nonce, encrypted, []byte{compression})
+}
+
+// Decrypt decrypts bytes by key.
+func Decrypt(key, data []byte) ([]byte, error) {
+	if len(key) == 0 {
+		return data, nil
+	}
+
 	salt := data[:8]
-	dk := pbkdf2.Key([]byte(key), salt, 10000, 16, sha256.New)
+	dk := pbkdf2.Key(key, salt, 10000, 16, sha256.New)
 	Aes, err := aes.NewCipher(dk)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	AesCCM, _ := aesccm.NewCCM(Aes, 8, 13)
-	plaintext, err := AesCCM.Open(nil, data[8:24], data[24:len(data)-1], nil)
+	decrypted, err := AesCCM.Open(nil, data[8:24], data[24:len(data)-1], nil)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	if data[len(data)-1] == []byte("0")[0] {
-		return string(plaintext), nil
+
+	if data[len(data)-1] == '0' {
+		return decrypted, nil
 	}
-	return decompress(plaintext)
+	return decompress(decrypted)
 }
 
 func concat(b ...[]byte) (c []byte) {
@@ -67,27 +147,26 @@ func concat(b ...[]byte) (c []byte) {
 	return
 }
 
-func compress(data string) ([]byte, []byte) {
+func compress(data []byte) ([]byte, byte) {
 	var b bytes.Buffer
 	w := zlib.NewWriter(&b)
-	w.Write([]byte(data))
+	w.Write(data)
 	w.Close()
-	if b.Len() < len([]byte(data)) {
-		return b.Bytes(), []byte("1")
+
+	if b.Len() < len(data) {
+		return b.Bytes(), '1'
 	}
-	return []byte(data), []byte("0")
+	return data, '0'
 }
 
-func decompress(data []byte) (string, error) {
+func decompress(data []byte) ([]byte, error) {
 	b := bytes.NewReader(data)
+
 	r, err := zlib.NewReader(b)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer r.Close()
-	decompressed, err := ioutil.ReadAll(r)
-	if err != nil {
-		return "", err
-	}
-	return string(decompressed), nil
+
+	return io.ReadAll(r)
 }

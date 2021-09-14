@@ -1,41 +1,39 @@
 package cipher
 
 import (
+	"bytes"
 	"crypto/rand"
-	"encoding/hex"
-	"math"
 	"testing"
 )
 
 func TestEncryptAndDecrypt(t *testing.T) {
 	keyLen := []int{0, 5, 20, 50}
-	plaintextLen := []int{10, 50, 200}
+	dataLen := []int{10, 50, 200}
 	for _, kl := range keyLen {
-		key := randomString(kl)
-		for _, pl := range plaintextLen {
-			plaintext := randomString(pl)
-			pt, err := Decrypt(key, Encrypt(key, plaintext))
+		key := random(kl)
+		for _, dl := range dataLen {
+			data := random(dl)
+			result, err := Decrypt(key, Encrypt(key, data))
 			if err != nil {
-				t.Error(kl, pl, err)
+				t.Fatal(kl, dl, err)
 			}
-			if pt != "" && pt != plaintext {
-				t.Errorf("expected %q; got %q", plaintext, pt)
+			if len(result) != 0 && !bytes.Equal(result, data) {
+				t.Errorf("expected %v; got %v", data, result)
 			}
 		}
 		plaintext := "测试"
-		pt, err := Decrypt(key, Encrypt(key, plaintext))
+		result, err := DecryptText(string(key), EncryptText(string(key), plaintext))
 		if err != nil {
-			t.Error(err)
+			t.Fatal(err)
 		}
-		if pt != "" && pt != plaintext {
-			t.Errorf("expected %q; got %q", plaintext, pt)
+		if result != "" && result != plaintext {
+			t.Errorf("expected %q; got %q", plaintext, result)
 		}
 	}
 }
 
-func randomString(l int) string {
-	buff := make([]byte, int(math.Round(float64(l)/2)))
+func random(len int) []byte {
+	buff := make([]byte, len)
 	rand.Read(buff)
-	str := hex.EncodeToString(buff)
-	return str[:l]
+	return buff
 }
