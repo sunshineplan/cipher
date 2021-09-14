@@ -17,7 +17,14 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 )
 
-const ext = ".enc"
+const (
+	iter    = 10000
+	dkLen   = 16
+	tagSize = 8
+	ext     = ".enc"
+)
+
+var calcLen = aesccm.CalculateNonceLengthFromMessageLength
 
 // EncryptText encrypts text by key.
 func EncryptText(key, plaintext string) string {
@@ -105,9 +112,15 @@ func Encrypt(key, data []byte) []byte {
 
 	salt := make([]byte, 8)
 	rand.Read(salt)
-	dk := pbkdf2.Key(key, salt, 10000, 16, sha256.New)
-	Aes, _ := aes.NewCipher(dk)
-	AesCCM, _ := aesccm.NewCCM(Aes, 8, 13)
+	dk := pbkdf2.Key(key, salt, iter, dkLen, sha256.New)
+	Aes, err := aes.NewCipher(dk)
+	if err != nil {
+		panic(err)
+	}
+	AesCCM, err := aesccm.NewCCM(Aes, tagSize, calcLen(len(data)))
+	if err != nil {
+		panic(err)
+	}
 	nonce := make([]byte, 16)
 	rand.Read(nonce)
 	data, compression := compress(data)
@@ -123,12 +136,15 @@ func Decrypt(key, data []byte) ([]byte, error) {
 	}
 
 	salt := data[:8]
-	dk := pbkdf2.Key(key, salt, 10000, 16, sha256.New)
+	dk := pbkdf2.Key(key, salt, iter, dkLen, sha256.New)
 	Aes, err := aes.NewCipher(dk)
 	if err != nil {
 		return nil, err
 	}
-	AesCCM, _ := aesccm.NewCCM(Aes, 8, 13)
+	AesCCM, err := aesccm.NewCCM(Aes, tagSize, calcLen(len(data)-tagSize))
+	if err != nil {
+		return nil, err
+	}
 	decrypted, err := AesCCM.Open(nil, data[8:24], data[24:len(data)-1], nil)
 	if err != nil {
 		return nil, err
