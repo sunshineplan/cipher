@@ -141,7 +141,7 @@ func Decrypt(key, data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	AesCCM, err := aesccm.NewCCM(Aes, tagSize, calcLen(len(data)-tagSize))
+	AesCCM, err := aesccm.NewCCM(Aes, tagSize, calcLen(len(data)-len(salt)-16-1-tagSize))
 	if err != nil {
 		return nil, err
 	}
