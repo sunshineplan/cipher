@@ -7,11 +7,11 @@ import (
 )
 
 func TestDecryptText(t *testing.T) {
-	plaintext, err := DecryptText("key", "mP2awmdvm/KJzPghoDl3+uF4ZVvksfs/A7h4eEzTVs+IWDBCnQkw")
+	plaintext, err := DecryptText("key", "B7y+ifBCt1AUqly/5Lku2EottQJ64wxUHIAt6KpF0m1wMOxhhP9cH//+pqx/MA")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if expect := "测试"; plaintext != expect {
+	if expect := "Hello, 世界"; plaintext != expect {
 		t.Errorf("expected %q; got %q", expect, plaintext)
 	}
 }
@@ -32,7 +32,7 @@ func TestEncryptAndDecrypt(t *testing.T) {
 					t.Errorf("expected %v; got %v", data, result)
 				}
 			}
-			plaintext := "测试"
+			plaintext := "Hello, 世界"
 			result, err := DecryptText(string(key), EncryptText(string(key), plaintext))
 			if err != nil {
 				t.Fatal(err)

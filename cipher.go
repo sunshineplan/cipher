@@ -26,6 +26,8 @@ const (
 
 var calcLen = aesccm.CalculateNonceLengthFromMessageLength
 
+var errBlankKey = errors.New("blank key")
+
 // EncryptText encrypts text by key.
 func EncryptText(key, plaintext string) string {
 	if key == "" {
@@ -63,7 +65,7 @@ func DecryptText(key, ciphertext string) (string, error) {
 // EncryptFile encrypts file by key.
 func EncryptFile(key, file string) error {
 	if key == "" {
-		return errors.New("blank key")
+		return errBlankKey
 	}
 
 	data, err := os.ReadFile(file)
@@ -77,7 +79,7 @@ func EncryptFile(key, file string) error {
 // DecryptFile decrypts file by key.
 func DecryptFile(key, file string) (string, error) {
 	if key == "" {
-		return "", errors.New("blank key")
+		return "", errBlankKey
 	}
 
 	data, err := os.ReadFile(file)
@@ -133,6 +135,9 @@ func Encrypt(key, data []byte) []byte {
 func Decrypt(key, data []byte) ([]byte, error) {
 	if len(key) == 0 {
 		return data, nil
+	}
+	if len(data) < 25 {
+		return nil, errors.New("data below minimum length")
 	}
 
 	salt := data[:8]
