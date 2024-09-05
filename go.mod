@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/pschlump/AesCCM v0.0.0-20160925022350-c5df73b5834e
-	golang.org/x/crypto v0.26.0
+	golang.org/x/crypto v0.27.0
 )
 
 require github.com/pschlump/godebug v1.0.4 // indirect
