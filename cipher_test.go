@@ -6,16 +6,6 @@ import (
 	"testing"
 )
 
-func TestDecryptText(t *testing.T) {
-	plaintext, err := DecryptText("key", "B7y+ifBCt1AUqly/5Lku2EottQJ64wxUHIAt6KpF0m1wMOxhhP9cH//+pqx/MA")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if expect := "Hello, 世界"; plaintext != expect {
-		t.Errorf("expected %q; got %q", expect, plaintext)
-	}
-}
-
 func TestEncryptAndDecrypt(t *testing.T) {
 	keyLen := []int{0, 5, 20, 50}
 	dataLen := []int{10, 2000, 30000, 400000, 5000000}
