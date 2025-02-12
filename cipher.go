@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/zlib"
 	"crypto/aes"
+	"crypto/pbkdf2"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -14,7 +15,6 @@ import (
 	"strings"
 
 	aesccm "github.com/pschlump/AesCCM"
-	"golang.org/x/crypto/pbkdf2"
 )
 
 const (
@@ -114,12 +114,15 @@ func Encrypt(key, data []byte) []byte {
 
 	salt := make([]byte, 8)
 	rand.Read(salt)
-	dk := pbkdf2.Key(key, salt, iter, dkLen, sha256.New)
-	Aes, err := aes.NewCipher(dk)
+	dk, err := pbkdf2.Key(sha256.New, string(key), salt, iter, dkLen)
 	if err != nil {
 		panic(err)
 	}
-	AesCCM, err := aesccm.NewCCM(Aes, tagSize, calcLen(len(data)))
+	block, err := aes.NewCipher(dk)
+	if err != nil {
+		panic(err)
+	}
+	AesCCM, err := aesccm.NewCCM(block, tagSize, calcLen(len(data)))
 	if err != nil {
 		panic(err)
 	}
@@ -141,12 +144,15 @@ func Decrypt(key, data []byte) ([]byte, error) {
 	}
 
 	salt := data[:8]
-	dk := pbkdf2.Key(key, salt, iter, dkLen, sha256.New)
-	Aes, err := aes.NewCipher(dk)
+	dk, err := pbkdf2.Key(sha256.New, string(key), salt, iter, dkLen)
+	if err != nil {
+		panic(err)
+	}
+	block, err := aes.NewCipher(dk)
 	if err != nil {
 		return nil, err
 	}
-	AesCCM, err := aesccm.NewCCM(Aes, tagSize, calcLen(len(data)-len(salt)-16-1-tagSize))
+	AesCCM, err := aesccm.NewCCM(block, tagSize, calcLen(len(data)-len(salt)-16-1-tagSize))
 	if err != nil {
 		return nil, err
 	}
