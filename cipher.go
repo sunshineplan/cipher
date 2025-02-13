@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/zlib"
 	"crypto/aes"
+	"crypto/cipher"
 	"crypto/pbkdf2"
 	"crypto/rand"
 	"crypto/sha256"
@@ -13,18 +14,15 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	aesccm "github.com/pschlump/AesCCM"
 )
 
 const (
-	iter    = 10000
-	dkLen   = 16
-	tagSize = 8
-	ext     = ".enc"
+	saltLength           = 8
+	iter                 = 1000000
+	keyLength            = 32
+	gcmStandardNonceSize = 12
+	ext                  = ".enc"
 )
-
-var calcLen = aesccm.CalculateNonceLengthFromMessageLength
 
 var errBlankKey = errors.New("blank key")
 
@@ -112,24 +110,24 @@ func Encrypt(key, data []byte) []byte {
 		return data
 	}
 
-	salt := make([]byte, 8)
+	salt := make([]byte, saltLength)
 	rand.Read(salt)
-	dk, err := pbkdf2.Key(sha256.New, string(key), salt, iter, dkLen)
+	key, err := pbkdf2.Key(sha256.New, string(key), salt, iter, keyLength)
 	if err != nil {
 		panic(err)
 	}
-	block, err := aes.NewCipher(dk)
+	block, err := aes.NewCipher(key)
 	if err != nil {
 		panic(err)
 	}
-	AesCCM, err := aesccm.NewCCM(block, tagSize, calcLen(len(data)))
+	aesgcm, err := cipher.NewGCM(block)
 	if err != nil {
 		panic(err)
 	}
-	nonce := make([]byte, 16)
+	nonce := make([]byte, gcmStandardNonceSize)
 	rand.Read(nonce)
 	data, compression := compress(data)
-	encrypted := AesCCM.Seal(nil, nonce, data, nil)
+	encrypted := aesgcm.Seal(nil, nonce, data, nil)
 
 	return concat(salt, nonce, encrypted, []byte{compression})
 }
@@ -139,29 +137,33 @@ func Decrypt(key, data []byte) ([]byte, error) {
 	if len(key) == 0 {
 		return data, nil
 	}
-	if len(data) < 25 {
+	if len(data) < saltLength+gcmStandardNonceSize+1 {
 		return nil, errors.New("data below minimum length")
 	}
 
-	salt := data[:8]
-	dk, err := pbkdf2.Key(sha256.New, string(key), salt, iter, dkLen)
+	salt := data[:saltLength]
+	key, err := pbkdf2.Key(sha256.New, string(key), salt, iter, keyLength)
 	if err != nil {
 		panic(err)
 	}
-	block, err := aes.NewCipher(dk)
+	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
 	}
-	AesCCM, err := aesccm.NewCCM(block, tagSize, calcLen(len(data)-len(salt)-16-1-tagSize))
+	aesgcm, err := cipher.NewGCM(block)
+	if err != nil {
+		panic(err)
+	}
+	decrypted, err := aesgcm.Open(
+		nil,
+		data[saltLength:saltLength+gcmStandardNonceSize],
+		data[saltLength+gcmStandardNonceSize:len(data)-1],
+		nil,
+	)
 	if err != nil {
 		return nil, err
 	}
-	decrypted, err := AesCCM.Open(nil, data[8:24], data[24:len(data)-1], nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if data[len(data)-1] == '0' {
+	if data[len(data)-1] == 0 {
 		return decrypted, nil
 	}
 	return decompress(decrypted)
@@ -181,9 +183,9 @@ func compress(data []byte) ([]byte, byte) {
 	w.Close()
 
 	if b.Len() < len(data) {
-		return b.Bytes(), '1'
+		return b.Bytes(), 1
 	}
-	return data, '0'
+	return data, 0
 }
 
 func decompress(data []byte) ([]byte, error) {
