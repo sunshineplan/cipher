@@ -2,9 +2,44 @@ package cipher
 
 import (
 	"bytes"
+	"crypto/pbkdf2"
 	"crypto/rand"
+	"crypto/sha256"
 	"testing"
+	"time"
 )
+
+func benchmarkPBKDF2(iter int, t *testing.T) {
+	start := time.Now()
+	pbkdf2.Key(sha256.New, string("testpassword"), []byte("testsalt"), iter, keyLength)
+	duration := time.Since(start)
+	t.Logf("Iterations: %d, Duration: %v", iter, duration)
+}
+
+func TestPBKDF2Performance(t *testing.T) {
+	iterationsList := []int{10000, 50000, 200000, 500000, 1000000}
+	for _, iter := range iterationsList {
+		benchmarkPBKDF2(iter, t)
+	}
+}
+
+func BenchmarkPBKDF2(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		pbkdf2.Key(sha256.New, string("testpassword"), []byte("testsalt"), iter, keyLength)
+	}
+	b.ReportAllocs()
+}
+
+func TestDecryptText(t *testing.T) {
+	plaintext, err := DecryptText("测试Key", "ZcDV7Bew3jHc0rnfI7u6FYSdc4kTp7R8Cs8QTt1+oPqoL/eoEI6eXqQ+5WsY1DplxgA")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if expect := "Hello, 世界"; plaintext != expect {
+		t.Errorf("expected %q; got %q", expect, plaintext)
+	}
+}
 
 func TestEncryptAndDecrypt(t *testing.T) {
 	keyLen := []int{0, 5, 20, 50}

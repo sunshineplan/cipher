@@ -18,7 +18,7 @@ import (
 
 const (
 	saltLength           = 8
-	iter                 = 4096
+	iter                 = 1000000
 	keyLength            = 32
 	gcmStandardNonceSize = 12
 	ext                  = ".enc"
@@ -163,8 +163,7 @@ func Decrypt(key, data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	if data[len(data)-1] == '0' {
+	if data[len(data)-1] == 0 {
 		return decrypted, nil
 	}
 	return decompress(decrypted)
@@ -184,9 +183,9 @@ func compress(data []byte) ([]byte, byte) {
 	w.Close()
 
 	if b.Len() < len(data) {
-		return b.Bytes(), '1'
+		return b.Bytes(), 1
 	}
-	return data, '0'
+	return data, 0
 }
 
 func decompress(data []byte) ([]byte, error) {
